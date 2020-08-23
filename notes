@@ -201,6 +201,20 @@ open_note() {
     $EDITOR "$note_path" < /dev/tty
 }
 
+export_notes() {
+    local ls_output=$(ls -p "$notes_dir/$*" 2>&1 | grep -v "~$")
+    for ls_note in $ls_output; do
+        echo "Writing $ls_note to Joplin"
+        local id=$(sha1sum <<<$ls_note)
+        local note=$(cat_note $notes_dir/$ls_note)
+        local json_format='{"id":"%s","title":"%s","body":"%s"}\n'
+        local json=$(printf "$json_format" "$id" "$ls_note" "$note")
+        result=$(curl --data "$json" http://127.0.0.1:41184/notes)
+        echo $result
+    done
+    echo "Done."
+}
+
 cat_note() {
     local note_path=$1
 
@@ -231,6 +245,7 @@ Usage:
     $name cat <name>                      # Display note
     echo <name> | $name open|o            # Open all note filenames piped in
     echo <name> | $name cat               # Display all note filenames piped in
+    $name export                          # Exports notes to Joplin
     $name --help                          # Print this usage information
 
 'command|c' means you can use 'command' or the equivalent shorthand alias 'c'
@@ -281,6 +296,9 @@ main() {
             ;;
         "cat" )
             cmd="handle_multiple_notes cat"
+            ;;
+        "export" )
+            cmd="export_notes"
             ;;
         --help | -help | -h )
             cmd="usage"
